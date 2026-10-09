@@ -7,6 +7,7 @@ final class RouterDelegate: NSObject, NSApplicationDelegate {
     private let store: ConfigurationStore
     private let initialURLs: [URL]
     private let logger = Logger(subsystem: "local.ChromeProfileRouter", category: "routing")
+    private let forwarder = ChromeForwarder()
     private var pendingLaunches = 0
     private var shutdownTimer: Timer?
     private(set) var failed = false
@@ -43,43 +44,57 @@ final class RouterDelegate: NSObject, NSApplicationDelegate {
             let runningChrome = NSRunningApplication.runningApplications(withBundleIdentifier: "com.google.Chrome")
                 .filter { !$0.isTerminated }
                 .min { ($0.launchDate ?? .distantPast) < ($1.launchDate ?? .distantPast) }
-            for batch in LaunchBatch.grouping(plans) {
-                pendingLaunches += 1
+            let batches = LaunchBatch.grouping(plans)
+            pendingLaunches += batches.count
+            for batch in batches {
+                for plan in batch.plans {
+                    logger.info("host=\(plan.host, privacy: .public) profile=\(plan.profileDirectory, privacy: .public)")
+                }
+                if let runningChrome, !runningChrome.isTerminated,
+                   let executableURL = Bundle(url: chromeURL)?.executableURL {
+                    // Bypass Launch Services for the short-lived forwarding process.
+                    forwarder.open(executableURL: executableURL, arguments: batch.arguments,
+                                   browser: runningChrome) { result in
+                        switch result {
+                        case .success(let browser): self.completeLaunch(browser: browser, error: nil)
+                        case .failure(let error): self.completeLaunch(browser: nil, error: error)
+                        }
+                    }
+                    continue
+                }
                 let options = NSWorkspace.OpenConfiguration()
                 // A new launch delivers the arguments even when Chrome is already running.
                 // Chrome then forwards the request to its existing browser process.
                 options.createsNewApplicationInstance = true
                 // Only the first browser process owns windows. A forwarding process
                 // must not take focus and then return it to the source app on exit.
-                options.activates = runningChrome == nil
+                options.activates = runningChrome?.isTerminated != false
                 options.arguments = batch.arguments
-                for plan in batch.plans {
-                    logger.info("host=\(plan.host, privacy: .public) profile=\(plan.profileDirectory, privacy: .public)")
-                }
-                NSWorkspace.shared.openApplication(at: chromeURL, configuration: options) { _, error in
+                NSWorkspace.shared.openApplication(at: chromeURL, configuration: options) { application, error in
                     Task { @MainActor in
-                        if let error {
-                            self.report(error)
-                        } else {
-                            // The new Chrome process forwards URLs and exits. Activate the
-                            // existing browser process, which owns the destination window.
-                            if let runningChrome {
-                                if #available(macOS 14, *) {
-                                    NSApp.yieldActivation(to: runningChrome)
-                                    runningChrome.activate(from: .current, options: [])
-                                } else {
-                                    runningChrome.activate(options: [.activateIgnoringOtherApps])
-                                }
-                            }
-                        }
-                        self.pendingLaunches -= 1
-                        self.scheduleExit()
+                        let browser = runningChrome.flatMap { $0.isTerminated ? nil : $0 } ?? application
+                        self.completeLaunch(browser: browser, error: error)
                     }
                 }
             }
         } catch {
             report(error)
         }
+        scheduleExit()
+    }
+
+    private func completeLaunch(browser: NSRunningApplication?, error: Error?) {
+        if let error {
+            report(error)
+        } else if let browser, !browser.isTerminated {
+            if #available(macOS 14, *) {
+                NSApp.yieldActivation(to: browser)
+                browser.activate(from: .current, options: [])
+            } else {
+                browser.activate(options: [.activateIgnoringOtherApps])
+            }
+        }
+        pendingLaunches -= 1
         scheduleExit()
     }
 
