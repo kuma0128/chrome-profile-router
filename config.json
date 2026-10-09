@@ -1,0 +1,20 @@
+{
+  "defaultProfile": "personal",
+  "profiles": {
+    "personal": "Default",
+    "work": "Profile 1",
+    "study": "Profile 2"
+  },
+  "rules": [
+    {
+      "host": "work.example.com",
+      "profile": "work",
+      "includeSubdomains": false
+    },
+    {
+      "host": "docs.example.org",
+      "profile": "study",
+      "includeSubdomains": true
+    }
+  ]
+}
