@@ -3,12 +3,8 @@ set -euo pipefail
 project_dir="$(cd "$(dirname "$0")/.." && pwd)"
 "$project_dir/scripts/build.sh"
 app_dir="$HOME/Applications/Chrome Profile Router.app"
-config_dir="$HOME/.config/chrome-profile-router"
-mkdir -p "$HOME/Applications" "$config_dir"
-if [[ ! -e "$config_dir/config.json" ]]; then
-    cp "$project_dir/config.json" "$config_dir/config.json"
-fi
-# Check the effective user configuration before replacing an installed app.
+mkdir -p "$HOME/Applications"
+# Let the app create missing settings, and validate them before replacing an installed app.
 "$project_dir/dist/Chrome Profile Router.app/Contents/MacOS/ChromeProfileRouter" --check-config
 if [[ -e "$app_dir" ]]; then
     backup_dir="$(mktemp -d "$HOME/Applications/.chrome-profile-router-backup.XXXXXX")"

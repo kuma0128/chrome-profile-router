@@ -17,7 +17,12 @@ final class RouterDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        if !initialURLs.isEmpty { open(initialURLs) }
+        if initialURLs.isEmpty {
+            // A Finder launch also prepares settings, even without a URL to route.
+            do { _ = try store.fileURL } catch { report(error) }
+        } else {
+            open(initialURLs)
+        }
         scheduleExit()
     }
 

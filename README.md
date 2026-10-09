@@ -2,32 +2,21 @@
 
 A small macOS app that opens links from other apps in a configured Chrome profile and brings its window to the front. It exits after handing links to Chrome.
 
-## Requirements
+## Install
 
-- macOS 13 or later
-- Xcode Command Line Tools with Swift 6 or later
-- Google Chrome
+Requires **macOS 13 or later** and **Google Chrome**. The download supports both Apple Silicon and Intel Macs. Xcode and Swift are not required.
 
-## Build and install
+1. Download `Chrome-Profile-Router-<version>-universal.zip` from [Releases](https://github.com/kuma0128/chrome-profile-router/releases/latest).
+2. Extract it and move **Chrome Profile Router.app** to **Applications**.
+3. Open the app once to create your settings. It exits without showing a window.
 
-```sh
-git clone https://github.com/kuma0128/chrome-profile-router.git
-cd chrome-profile-router
-./scripts/install.sh
-```
+The app uses ad-hoc signing and is not notarized by Apple. If macOS blocks the first launch, open **System Settings → Privacy & Security → Open Anyway** after attempting to open it, only if you trust the download. See [Apple's instructions](https://support.apple.com/en-us/102445).
 
-This builds and installs the app at `~/Applications/Chrome Profile Router.app`. Existing user settings are preserved.
-
-To build without installing, or run the tests:
-
-```sh
-./scripts/build.sh  # Creates dist/Chrome Profile Router.app
-./scripts/test.sh
-```
+To update, replace the app with the latest download. Your settings are preserved.
 
 ## Configure
 
-Edit `~/.config/chrome-profile-router/config.json`, created on first install. For example:
+Edit `~/.config/chrome-profile-router/config.json`, created on first launch. For example:
 
 ```json
 {
@@ -58,15 +47,35 @@ Select **Chrome Profile Router** in **System Settings → Desktop & Dock → Def
 To try it without changing your default browser:
 
 ```sh
-open -a "$HOME/Applications/Chrome Profile Router.app" 'https://example.com/'
+open -a 'Chrome Profile Router' 'https://example.com/'
 ```
 
 To check settings or preview routing without opening Chrome:
 
 ```sh
-router="$HOME/Applications/Chrome Profile Router.app/Contents/MacOS/ChromeProfileRouter"
+router='/Applications/Chrome Profile Router.app/Contents/MacOS/ChromeProfileRouter'
 "$router" --check-config
 "$router" --resolve 'https://work.example.com/'
 ```
 
 Use `--open URL [URL ...]` to open links, or `--config PATH` to use another config file. HTTP, HTTPS, and local HTML files (`file:///path/page.html`) are supported.
+
+## Build from source
+
+Requires **Xcode Command Line Tools with Swift 6 or later** (`xcode-select --install`).
+
+```sh
+git clone https://github.com/kuma0128/chrome-profile-router.git
+cd chrome-profile-router
+./scripts/install.sh
+```
+
+This builds for your Mac and installs the app in `~/Applications`. Use that path instead of `/Applications` for the CLI commands above. Existing settings are preserved.
+
+```sh
+./scripts/build.sh    # Build dist/Chrome Profile Router.app for your Mac
+./scripts/test.sh     # Run tests
+./scripts/package.sh # Build a universal app and ZIP in dist/
+```
+
+To publish a release, update the version and build number in `Resources/Info.plist`, commit, and push a matching `v<version>` tag. GitHub Actions builds the ZIP, tests it on Apple Silicon and Intel, and publishes it to Releases.

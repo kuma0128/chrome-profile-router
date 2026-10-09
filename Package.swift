@@ -9,5 +9,6 @@ let package = Package(
         .target(name: "RouterCore"),
         .executableTarget(name: "ChromeProfileRouter", dependencies: ["RouterCore"]),
         .testTarget(name: "RouterCoreTests", dependencies: ["RouterCore"]),
+        .testTarget(name: "ChromeProfileRouterTests", dependencies: ["ChromeProfileRouter"]),
     ]
 )
