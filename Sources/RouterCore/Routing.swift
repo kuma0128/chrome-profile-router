@@ -6,8 +6,8 @@ public enum RoutingError: Error, LocalizedError {
 
     public var errorDescription: String? {
         switch self {
-        case .invalidConfiguration(let reason): return "設定を確認してください。\n\(reason)"
-        case .unsupportedURL: return "http / https のURL、またはローカルのHTMLファイルだけを開けます。"
+        case .invalidConfiguration(let reason): return String(localized: "Check your settings.\n\(reason)")
+        case .unsupportedURL: return String(localized: "Only http/https URLs and local HTML files can be opened.")
         }
     }
 }
@@ -28,7 +28,7 @@ public struct RoutingConfiguration: Decodable, Sendable {
         do {
             configuration = try JSONDecoder().decode(Self.self, from: data)
         } catch {
-            throw RoutingError.invalidConfiguration("JSONの形式または必須項目に誤りがあります。")
+            throw RoutingError.invalidConfiguration(String(localized: "The JSON format or required fields are invalid."))
         }
         try configuration.validate()
         return configuration
@@ -36,14 +36,14 @@ public struct RoutingConfiguration: Decodable, Sendable {
 
     private func validate() throws {
         guard profiles[defaultProfile] != nil else {
-            throw RoutingError.invalidConfiguration("defaultProfile が profiles に存在しません。")
+            throw RoutingError.invalidConfiguration(String(localized: "defaultProfile must refer to an entry in profiles."))
         }
         for (name, directory) in profiles {
             guard !name.isEmpty,
                   directory.range(of: #"\A(?:Default|Profile [1-9][0-9]*)\z"#,
                                   options: .regularExpression) != nil else {
                 throw RoutingError.invalidConfiguration(
-                    "profiles には空でない名前と、Default または Profile 番号を指定してください。")
+                    String(localized: "Each profile must have a nonempty name and a directory of Default or Profile followed by a number."))
             }
         }
         for rule in rules {
@@ -55,10 +55,10 @@ public struct RoutingConfiguration: Decodable, Sendable {
                       label.first != "-" && label.last != "-" &&
                       label.utf8.allSatisfy { (97...122).contains($0) || (48...57).contains($0) || $0 == 45 }
                   }) else {
-                throw RoutingError.invalidConfiguration("rules の host にはドメイン名だけを指定してください。")
+                throw RoutingError.invalidConfiguration(String(localized: "Use only domain names for host in rules."))
             }
             guard profiles[rule.profile] != nil else {
-                throw RoutingError.invalidConfiguration("rules に未定義のプロファイルがあります。")
+                throw RoutingError.invalidConfiguration(String(localized: "A rule refers to an undefined profile."))
             }
         }
     }
@@ -78,7 +78,7 @@ public struct RoutingConfiguration: Decodable, Sendable {
         }
         let profile = rule?.profile ?? defaultProfile
         guard let directory = profiles[profile] else {
-            throw RoutingError.invalidConfiguration("振り分け先が profiles に存在しません。")
+            throw RoutingError.invalidConfiguration(String(localized: "The destination profile is missing from profiles."))
         }
         return LaunchPlan(host: host, profile: profile, profileDirectory: directory,
                           arguments: ["--profile-directory=\(directory)", url.absoluteString])

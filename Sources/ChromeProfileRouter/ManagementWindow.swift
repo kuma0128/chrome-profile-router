@@ -4,8 +4,8 @@ import AppKit
 final class ManagementWindow: NSWindowController, NSWindowDelegate {
     private let store: ConfigurationStore
     private let updates: UpdateController
-    private let status = NSTextField(wrappingLabelWithString: "リンクは設定に従ってChromeのプロファイルへ振り分けます。")
-    private let updateButton = NSButton(title: "更新を確認…", target: nil, action: nil)
+    private let status = NSTextField(wrappingLabelWithString: String(localized: "Links open in the Chrome profile chosen by your settings."))
+    private let updateButton = NSButton(title: String(localized: "Check for Updates…"), target: nil, action: nil)
     private var observation: NSKeyValueObservation?
     var onClose: (() -> Void)?
 
@@ -20,17 +20,17 @@ final class ManagementWindow: NSWindowController, NSWindowDelegate {
         window.delegate = self
         let title = NSTextField(labelWithString: "Chrome Profile Router")
         title.font = .boldSystemFont(ofSize: 21)
-        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "開発版"
-        let versionLabel = NSTextField(labelWithString: "バージョン \(version)")
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? String(localized: "Development build")
+        let versionLabel = NSTextField(labelWithString: String(localized: "Version \(version)"))
         versionLabel.textColor = .secondaryLabelColor
         status.textColor = .secondaryLabelColor
-        let configButton = NSButton(title: "設定ファイルを開く…", target: self, action: #selector(openConfiguration))
+        let configButton = NSButton(title: String(localized: "Open Settings File…"), target: self, action: #selector(openConfiguration))
         updateButton.target = self
         updateButton.action = #selector(checkForUpdates)
-        let automatic = NSButton(checkboxWithTitle: "アップデートを自動で確認", target: self,
+        let automatic = NSButton(checkboxWithTitle: String(localized: "Automatically check for updates"), target: self,
                                  action: #selector(changeAutomaticChecks(_:)))
         automatic.state = updates.updater.automaticallyChecksForUpdates ? .on : .off
-        let footnote = NSTextField(wrappingLabelWithString: "利用時に約1日おきに確認します。インストール前に確認画面を表示します。")
+        let footnote = NSTextField(wrappingLabelWithString: String(localized: "Checks about once a day while in use. Asks before installing."))
         footnote.font = .systemFont(ofSize: 11)
         footnote.textColor = .secondaryLabelColor
         let buttons = NSStackView(views: [updateButton, configButton])
@@ -53,7 +53,7 @@ final class ManagementWindow: NSWindowController, NSWindowDelegate {
                 self.updateButton.isEnabled = self.updates.startupError == nil && self.updates.updater.canCheckForUpdates
             }
         }
-        if let error = updates.startupError { status.stringValue = "更新機能を開始できませんでした：\(error.localizedDescription)" }
+        if let error = updates.startupError { status.stringValue = String(localized: "Could not start the updater: \(error.localizedDescription)") }
         window.center()
     }
 
@@ -61,7 +61,7 @@ final class ManagementWindow: NSWindowController, NSWindowDelegate {
 
     func present(activate: Bool, availableVersion: String? = nil) {
         if let availableVersion {
-            status.stringValue = "バージョン \(availableVersion) に更新できます。「更新を確認…」からインストールしてください。"
+            status.stringValue = String(localized: "Version \(availableVersion) is available. Choose “Check for Updates…” to install it.")
         }
         NSApp.setActivationPolicy(.regular)
         if activate {

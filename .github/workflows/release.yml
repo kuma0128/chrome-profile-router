@@ -93,7 +93,9 @@ jobs:
 
           Extract the ZIP, move **Chrome Profile Router.app** to Applications, and open it. The management window shows the installed version and buttons to check for updates or open your settings. Configure your Chrome profiles before choosing the app as your default browser.
 
-          Starting with 1.0.5, the app checks for updates about once a day while in use and asks before installing. You can also choose **更新を確認…** in the management window. Versions 1.0.4 and earlier need one manual replacement to enable this feature.
+          Starting with 1.0.5, the app checks for updates about once a day while in use and asks before installing. You can also choose **Check for Updates…** (**更新を確認…**) in the management window. Versions 1.0.4 and earlier need one manual replacement to enable this feature.
+
+          Starting with 1.0.7, the interface supports English and Japanese and follows your macOS language preferences. To choose a language for this app, use **System Settings → General → Language & Region → Applications**, then restart the app.
 
           This build uses ad-hoc signing and is not notarized by Apple. If macOS blocks the first launch, use **System Settings → Privacy & Security → Open Anyway** after attempting to open it, only if you trust this download. See [Apple's instructions](https://support.apple.com/en-us/102445).
 

@@ -21,7 +21,7 @@ struct ConfigurationStore {
             if FileManager.default.fileExists(atPath: userURL.path) { return userURL }
             guard let bundledURL else {
                 throw RoutingError.invalidConfiguration(
-                    "設定ファイルがありません。--config で指定するか、ビルドした .app を使用してください。")
+                    String(localized: "No settings file was found. Specify one with --config or use the built .app."))
             }
             try FileManager.default.createDirectory(at: userURL.deletingLastPathComponent(),
                                                     withIntermediateDirectories: true)
@@ -41,7 +41,7 @@ struct ConfigurationStore {
         do {
             data = try Data(contentsOf: url)
         } catch {
-            throw RoutingError.invalidConfiguration("設定ファイルを読み取れません: \(url.path)")
+            throw RoutingError.invalidConfiguration(String(localized: "Could not read settings: \(url.path)"))
         }
         return try RoutingConfiguration.decode(data)
     }

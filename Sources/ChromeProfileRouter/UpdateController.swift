@@ -54,7 +54,7 @@ final class UpdateController: NSObject, SPUUpdaterDelegate, @preconcurrency SPUS
         guard !handleShowingUpdate else { return }
         hasPendingReminder = true
         onReminder?(update.displayVersionString)
-        NSApp.dockTile.badgeLabel = "更新"
+        NSApp.dockTile.badgeLabel = String(localized: "Update")
         NSApp.requestUserAttention(.informationalRequest)
     }
 

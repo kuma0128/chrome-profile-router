@@ -59,7 +59,7 @@ final class ChromeForwarder {
     private struct ForwardingError: LocalizedError {
         let status: Int32
         var errorDescription: String? {
-            "ChromeへのURLの受け渡しに失敗しました（終了コード: \(status)）。"
+            String(localized: "Could not forward URLs to Chrome (exit code: \(status)).")
         }
     }
 }

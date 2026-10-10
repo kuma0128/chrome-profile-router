@@ -6,17 +6,17 @@ struct CommandLineOptions {
     var configURL: URL?
     var urls: [URL] = []
 
-    static let help = """
+    static let help = String(localized: "cli.help", defaultValue: """
     Chrome Profile Router
-      --resolve URL [URL ...]   振り分け結果をJSONで表示（Chromeは起動しない）
-      --open URL [URL ...]      Chromeの指定プロファイルで開く
-      --check-config           設定ファイルを検証
-      --config PATH            この起動で使う設定ファイルを指定
-      --help                   この説明を表示
-    .app を直接開くと管理画面を表示します。URLから起動するとChromeへ渡します。
-    更新の確認・案内中を除き、リンクを渡した後に終了します。
-    ローカルHTMLファイルは file:///... 形式で指定できます。
-    """
+      --resolve URL [URL ...]   Show routing as JSON without launching Chrome
+      --open URL [URL ...]      Open in the configured Chrome profile
+      --check-config           Validate settings
+      --config PATH            Use this settings file for this launch
+      --help                   Show this help
+    Open the .app directly to manage settings and updates. URL launches forward links to Chrome.
+    The app exits after forwarding, unless an update check or update window is active.
+    Specify local HTML files as file:///... URLs.
+    """, comment: "Command-line help. Keep option names and URL schemes unchanged.")
 
     init(arguments: [String]) throws {
         var index = 0
@@ -24,6 +24,10 @@ struct CommandLineOptions {
         while index < arguments.count {
             let argument = arguments[index]
             switch argument {
+            case "-AppleLanguages", "-AppleLocale":
+                // Foundation reads these standard launch overrides from the original arguments.
+                index += 1
+                guard index < arguments.count else { throw UsageError() }
             case "--config":
                 index += 1
                 guard index < arguments.count else { throw UsageError() }
@@ -46,6 +50,8 @@ struct CommandLineOptions {
     }
 
     struct UsageError: Error, LocalizedError {
-        var errorDescription: String? { "引数を確認してください。\n\(CommandLineOptions.help)" }
+        var errorDescription: String? {
+            String(localized: "Check the command-line arguments.") + "\n" + CommandLineOptions.help
+        }
     }
 }

@@ -8,15 +8,21 @@ Requires **macOS 13 or later** and **Google Chrome**. The download supports both
 
 1. Download `Chrome-Profile-Router-<version>-universal.zip` from [Releases](https://github.com/kuma0128/chrome-profile-router/releases/latest).
 2. Extract it and move **Chrome Profile Router.app** to **Applications**.
-3. Open the app to create your settings and display the management window. Choose **設定ファイルを開く…** to configure your profiles.
+3. Open the app to create your settings and display the management window. Choose **Open Settings File…** (**設定ファイルを開く…**) to configure your profiles.
 
 The app uses ad-hoc signing and is not notarized by Apple. If macOS blocks the first launch, open **System Settings → Privacy & Security → Open Anyway** after attempting to open it, only if you trust the download. See [Apple's instructions](https://support.apple.com/en-us/102445).
 
-Starting with **1.0.5**, the app checks for updates about once a day while in use. A new version shows a reminder without taking focus from Chrome. Choose **更新を確認…** to download and install it, or close the reminder to leave it until later. Sparkle's update window also offers postponing or skipping a version. Settings are preserved.
+Starting with **1.0.5**, the app checks for updates about once a day while in use. A new version shows a reminder without taking focus from Chrome. Choose **Check for Updates…** (**更新を確認…**) to download and install it, or close the reminder to leave it until later. Sparkle's update window also offers postponing or skipping a version. Settings are preserved.
 
 Open the app directly to check for updates at any time or turn automatic checks off. The app does not run an always-on background service, and installs only after you choose to update. Failed automatic checks do not block links. Updates and their feed are verified with an Ed25519 signature.
 
 **1.0.4 and earlier:** replace the app manually once to enable in-app updates. You can also keep updating manually using the ZIP downloads.
+
+## Language
+
+Starting with **1.0.7**, the app supports English and Japanese. macOS selects the supported language that best matches your preferred languages, falling back to English if none match. Region and keyboard settings do not choose the interface language.
+
+To change only this app's language, use **System Settings → General → Language & Region → Applications**, add **Chrome Profile Router**, and choose English or Japanese. Restart the app to apply the change. Management, update dialogs, errors, and command-line help follow this setting. Configuration keys, profile names, and JSON output stay unchanged.
 
 ## Configure
 
@@ -85,6 +91,8 @@ This builds for your Mac and installs the app in `~/Applications`. Use that path
 To publish a release, update the version and build number in `Resources/Info.plist`, commit, and push a matching `v<version>` tag. GitHub Actions builds the ZIP, tests it on Apple Silicon and Intel, signs the update and `appcast.xml`, and publishes all files to Releases. The app reads the feed from the latest release.
 
 Before tagging, download the ZIP from the successful main-branch workflow and test that exact build on a Mac. Open the management window, choose **設定ファイルを開く…**, and confirm both that TextEdit opens the settings and that the router stays running and responds to **更新を確認…** afterward. Also check a missing `--config` path: dismissing the error must leave the router usable. A local build alone is insufficient because the local and CI Swift toolchains can differ. After publishing, install through the updater and repeat the settings check on the released app.
+
+Localizations live in `Resources/en.lproj/Localizable.strings` and `Resources/ja.lproj/Localizable.strings`. The existing build script copies them into the main app bundle; `String(localized:)` lets Foundation select the language. Keep keys and format placeholders in sync. The unpackaged Swift executable has English source fallbacks; use the built `.app` to test translations. Package checks exercise Japanese, English, regional variants, language priority, and unsupported-language fallback. For UI checks, launch the app binary with `-AppleLanguages '(en)'` or `-AppleLanguages '(ja)'` (Apple's standard per-launch overrides), check the management window and Sparkle dialogs for clipping and mixed languages, and verify the macOS per-app language setting. These launch arguments do not change persistent language preferences.
 
 Release signing requires the repository Actions secret `SPARKLE_PRIVATE_KEY`, matching `SUPublicEDKey` in `Resources/Info.plist`. The maintainer's key is stored in macOS Keychain under service `https://sparkle-project.org`, account `chrome-profile-router`. Keep this key: ad-hoc signed apps cannot rotate it using an Apple Developer ID fallback. Never commit or print the private key. For local packaging, `./scripts/appcast.sh` uses the Keychain after `./scripts/package.sh`.
 

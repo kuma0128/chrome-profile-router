@@ -15,4 +15,4 @@ ditto "$project_dir/dist/Chrome Profile Router.app" "$app_dir"
 codesign --verify --strict "$app_dir"
 "/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister" -f "$app_dir"
 printf 'Installed: %s\n' "$app_dir"
-printf '既定ブラウザは、システム設定 → デスクトップとDock → デフォルトのWebブラウザから変更できます。\n'
+printf 'Choose your default browser in System Settings → Desktop & Dock → Default web browser.\n'

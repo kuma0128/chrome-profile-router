@@ -78,7 +78,7 @@ final class RouterDelegate: NSObject, NSApplicationDelegate {
         let menu = NSMenu()
         let applicationItem = NSMenuItem()
         let applicationMenu = NSMenu()
-        applicationMenu.addItem(withTitle: "Chrome Profile Routerを終了", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        applicationMenu.addItem(withTitle: String(localized: "Quit Chrome Profile Router"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         applicationItem.submenu = applicationMenu
         menu.addItem(applicationItem)
         NSApp.mainMenu = menu
@@ -93,7 +93,7 @@ final class RouterDelegate: NSObject, NSApplicationDelegate {
             // Validate the entire batch before opening any of its URLs.
             let plans = try urls.map { try configuration.plan(for: $0) }
             guard let chromeURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.google.Chrome") else {
-                throw RoutingError.invalidConfiguration("Google Chromeが見つかりません。")
+                throw RoutingError.invalidConfiguration(String(localized: "Google Chrome could not be found."))
             }
             let runningChrome = NSRunningApplication.runningApplications(withBundleIdentifier: "com.google.Chrome")
                 .filter { !$0.isTerminated }
@@ -169,10 +169,10 @@ final class RouterDelegate: NSObject, NSApplicationDelegate {
             return
         }
         let alert = NSAlert()
-        alert.messageText = "リンクを開けませんでした"
+        alert.messageText = String(localized: "Could Not Open Links")
         alert.informativeText = error.localizedDescription
         alert.alertStyle = .warning
-        alert.addButton(withTitle: "閉じる")
+        alert.addButton(withTitle: String(localized: "Close"))
         NSApp.activate(ignoringOtherApps: true)
         alert.runModal()
     }
@@ -226,7 +226,7 @@ struct ChromeProfileRouter {
                 print(CommandLineOptions.help)
             case .check:
                 _ = try store.load()
-                print("設定は有効です: \(try store.fileURL.path)")
+                print(String(localized: "Settings are valid: \(try store.fileURL.path)"))
             case .resolve:
                 let configuration = try store.load()
                 let plans = try options.urls.map { try configuration.plan(for: $0) }

@@ -28,6 +28,10 @@ fi
 ditto "$sparkle_dir/Sparkle.xcframework/macos-arm64_x86_64/Sparkle.framework" "$app_dir/Contents/Frameworks/Sparkle.framework"
 cp Resources/Info.plist "$app_dir/Contents/Info.plist"
 cp config.json "$app_dir/Contents/Resources/config.json"
+for localization in Resources/*.lproj; do
+    plutil -lint "$localization/Localizable.strings"
+    ditto "$localization" "$app_dir/Contents/Resources/$(basename "$localization")"
+done
 # Remove debug symbols, including local source paths, from the distributable binary.
 xcrun strip -S "$app_dir/Contents/MacOS/ChromeProfileRouter"
 plutil -lint "$app_dir/Contents/Info.plist"

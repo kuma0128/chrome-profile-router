@@ -40,4 +40,28 @@ if CFFIXED_USER_HOME="$test_user_dir" "$router" --check-config > "$check_dir/inv
     exit 1
 fi
 test "$(cat "$config")" = 'invalid JSON'
+# Exercise Foundation's real language selection in the packaged app, with independent
+# preferences per process. These launch arguments do not change the Mac's settings.
+check_language() {
+    local preferences="$1" region="$2" help_text="$3" error_text="$4"
+    CFFIXED_USER_HOME="$test_user_dir" "$router" -AppleLanguages "$preferences" \
+        -AppleLocale "$region" --help > "$check_dir/help.txt"
+    grep -Fq "$help_text" "$check_dir/help.txt"
+    if CFFIXED_USER_HOME="$test_user_dir" "$router" -AppleLanguages "$preferences" \
+        -AppleLocale "$region" --check-config > "$check_dir/error.txt" 2>&1; then
+        printf 'Invalid settings were unexpectedly accepted.\n' >&2
+        exit 1
+    fi
+    grep -Fq "$error_text" "$check_dir/error.txt"
+    CFFIXED_USER_HOME="$test_user_dir" "$router" -AppleLanguages "$preferences" \
+        -AppleLocale "$region" --config "$project_dir/config.json" \
+        --resolve 'https://work.example.com/' > "$check_dir/localized-route.json"
+    cmp "$check_dir/route.json" "$check_dir/localized-route.json"
+}
+for preferences in '(ja)' '(ja-JP)' '(ja, en)' '(fr, ja, en)'; do
+    check_language "$preferences" en_US '設定ファイルを検証' 'JSONの形式または必須項目に誤りがあります。'
+done
+for preferences in '(en)' '(en-GB)' '(en, ja)' '(fr)'; do
+    check_language "$preferences" ja_JP 'Validate settings' 'The JSON format or required fields are invalid.'
+done
 printf 'Package checks passed (%s).\n' "$(uname -m)"
