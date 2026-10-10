@@ -20,9 +20,11 @@ Open the app directly to check for updates at any time or turn automatic checks 
 
 ## Language
 
-Starting with **1.0.7**, the app supports English and Japanese. macOS selects the supported language that best matches your preferred languages, falling back to English if none match. Region and keyboard settings do not choose the interface language.
+Starting with **1.0.7**, the app supports English, Japanese, Chinese (Simplified and Traditional), Korean, Spanish, French, German, Italian, Portuguese (Brazil and Portugal), Russian, and Arabic. macOS selects the supported language that best matches your preferred languages, falling back to English if none match. Region and keyboard settings do not choose the interface language.
 
-To change only this app's language, use **System Settings → General → Language & Region → Applications**, add **Chrome Profile Router**, and choose English or Japanese. Restart the app to apply the change. Management, update dialogs, errors, and command-line help follow this setting. Configuration keys, profile names, and JSON output stay unchanged.
+To change only this app's language, use **System Settings → General → Language & Region → Applications**, add **Chrome Profile Router**, and choose a supported language. Restart the app to apply the change. Management, update dialogs, errors, and command-line help follow this setting. Configuration keys, profile names, and JSON output stay unchanged.
+
+Update dialogs use Sparkle's bundled translations. Some messages, particularly in Arabic, are not translated upstream and fall back to English.
 
 ## Configure
 
@@ -92,7 +94,7 @@ To publish a release, update the version and build number in `Resources/Info.pli
 
 Before tagging, download the ZIP from the successful main-branch workflow and test that exact build on a Mac. Open the management window, choose **設定ファイルを開く…**, and confirm both that TextEdit opens the settings and that the router stays running and responds to **更新を確認…** afterward. Also check a missing `--config` path: dismissing the error must leave the router usable. A local build alone is insufficient because the local and CI Swift toolchains can differ. After publishing, install through the updater and repeat the settings check on the released app.
 
-Localizations live in `Resources/en.lproj/Localizable.strings` and `Resources/ja.lproj/Localizable.strings`. The existing build script copies them into the main app bundle; `String(localized:)` lets Foundation select the language. Keep keys and format placeholders in sync. The unpackaged Swift executable has English source fallbacks; use the built `.app` to test translations. Package checks exercise Japanese, English, regional variants, language priority, and unsupported-language fallback. For UI checks, launch the app binary with `-AppleLanguages '(en)'` or `-AppleLanguages '(ja)'` (Apple's standard per-launch overrides), check the management window and Sparkle dialogs for clipping and mixed languages, and verify the macOS per-app language setting. These launch arguments do not change persistent language preferences.
+Localizations live in `Resources/<language>.lproj/Localizable.strings`. The existing build script copies them into the main app bundle; `String(localized:)` lets Foundation select the language. Keep keys and format placeholders in sync with `en.lproj`. The unpackaged Swift executable has English source fallbacks; use the built `.app` to test translations. Package checks exercise all 13 localizations, regional variants, language priority, and unsupported-language fallback. For UI checks, launch the app binary with `-AppleLanguages '(en)'` or `-AppleLanguages '(ja)'` (Apple's standard per-launch overrides), check the management window and Sparkle dialogs for clipping and mixed languages, include Arabic's right-to-left layout, and verify the macOS per-app language setting. These launch arguments do not change persistent language preferences.
 
 Release signing requires the repository Actions secret `SPARKLE_PRIVATE_KEY`, matching `SUPublicEDKey` in `Resources/Info.plist`. The maintainer's key is stored in macOS Keychain under service `https://sparkle-project.org`, account `chrome-profile-router`. Keep this key: ad-hoc signed apps cannot rotate it using an Apple Developer ID fallback. Never commit or print the private key. For local packaging, `./scripts/appcast.sh` uses the Keychain after `./scripts/package.sh`.
 

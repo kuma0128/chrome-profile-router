@@ -11,18 +11,23 @@ struct LocalizationTests {
             return try #require(PropertyListSerialization.propertyList(from: data, format: nil) as? [String: String])
         }
         let english = try table("en")
-        let japanese = try table("ja")
-        #expect(Set(english.keys) == Set(japanese.keys))
         let placeholder = try NSRegularExpression(pattern: #"%(?:\d+\$)?(?:@|lld|ld|d)"#)
         func placeholders(_ value: String) -> [String] {
             placeholder.matches(in: value, range: NSRange(value.startIndex..., in: value)).map {
                 String(value[Range($0.range, in: value)!])
             }.sorted()
         }
-        for (key, value) in english {
-            let translation = try #require(japanese[key])
-            #expect(!translation.isEmpty, "\(key)")
-            #expect(placeholders(value) == placeholders(translation), "\(key)")
+        let resources = try FileManager.default.contentsOfDirectory(at: project.appendingPathComponent("Resources"),
+                                                                   includingPropertiesForKeys: nil)
+        for directory in resources where directory.pathExtension == "lproj" {
+            let language = directory.deletingPathExtension().lastPathComponent
+            let translations = try table(language)
+            #expect(Set(english.keys) == Set(translations.keys), "\(language)")
+            for (key, value) in english {
+                let translation = try #require(translations[key])
+                #expect(!translation.isEmpty, "\(language): \(key)")
+                #expect(placeholders(value) == placeholders(translation), "\(language): \(key)")
+            }
         }
     }
 

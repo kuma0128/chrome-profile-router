@@ -12,7 +12,7 @@ final class ManagementWindow: NSWindowController, NSWindowDelegate {
     init(store: ConfigurationStore, updates: UpdateController) {
         self.store = store
         self.updates = updates
-        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 440, height: 280),
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 520, height: 320),
                               styleMask: [.titled, .closable, .miniaturizable], backing: .buffered, defer: false)
         window.title = "Chrome Profile Router"
         window.isReleasedWhenClosed = false
@@ -37,6 +37,16 @@ final class ManagementWindow: NSWindowController, NSWindowDelegate {
         buttons.spacing = 10
         let content = NSStackView(views: [title, versionLabel, status, buttons, automatic, footnote])
         content.orientation = .vertical
+        // Programmatically created AppKit controls need explicit mirroring for RTL text.
+        let language = Locale.Language(identifier: Bundle.main.preferredLocalizations.first ?? "en")
+        let rightToLeft = language.characterDirection == .rightToLeft
+        let direction: NSUserInterfaceLayoutDirection = rightToLeft ? .rightToLeft : .leftToRight
+        let views: [NSView] = [content, buttons, title, versionLabel, status, updateButton,
+                               configButton, automatic, footnote]
+        for view in views { view.userInterfaceLayoutDirection = direction }
+        for label in [title, versionLabel, status, footnote] { label.alignment = .natural }
+        automatic.imagePosition = rightToLeft ? .imageRight : .imageLeft
+        window.contentView!.userInterfaceLayoutDirection = direction
         content.alignment = .leading
         content.spacing = 14
         content.translatesAutoresizingMaskIntoConstraints = false
