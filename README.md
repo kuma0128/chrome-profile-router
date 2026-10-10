@@ -84,6 +84,8 @@ This builds for your Mac and installs the app in `~/Applications`. Use that path
 
 To publish a release, update the version and build number in `Resources/Info.plist`, commit, and push a matching `v<version>` tag. GitHub Actions builds the ZIP, tests it on Apple Silicon and Intel, signs the update and `appcast.xml`, and publishes all files to Releases. The app reads the feed from the latest release.
 
+Before tagging, download the ZIP from the successful main-branch workflow and test that exact build on a Mac. Open the management window, choose **設定ファイルを開く…**, and confirm both that TextEdit opens the settings and that the router stays running and responds to **更新を確認…** afterward. Also check a missing `--config` path: dismissing the error must leave the router usable. A local build alone is insufficient because the local and CI Swift toolchains can differ. After publishing, install through the updater and repeat the settings check on the released app.
+
 Release signing requires the repository Actions secret `SPARKLE_PRIVATE_KEY`, matching `SUPublicEDKey` in `Resources/Info.plist`. The maintainer's key is stored in macOS Keychain under service `https://sparkle-project.org`, account `chrome-profile-router`. Keep this key: ad-hoc signed apps cannot rotate it using an Apple Developer ID fallback. Never commit or print the private key. For local packaging, `./scripts/appcast.sh` uses the Keychain after `./scripts/package.sh`.
 
 Sparkle is pinned in `Package.swift` and `Package.resolved`; the build embeds its framework and helper tools. The update signature is separate from Apple Developer ID signing and notarization, which this app does not currently use.

@@ -81,14 +81,15 @@ final class ManagementWindow: NSWindowController, NSWindowDelegate {
     }
 
     @objc private func openConfiguration() {
-        do {
-            let url = try store.fileURL
-            NSWorkspace.shared.open([url], withApplicationAt: URL(fileURLWithPath: "/System/Applications/TextEdit.app"),
-                                    configuration: NSWorkspace.OpenConfiguration()) { _, error in
-                if let error {
-                    Task { @MainActor in NSAlert(error: error).runModal() }
-                }
-            }
-        } catch { NSAlert(error: error).runModal() }
+        Task { @MainActor in
+            do {
+                let url = try store.fileURL
+                // NSWorkspace's completion-handler API calls back on a concurrent queue.
+                // Awaiting the operation resumes here on the main actor, including on failure.
+                _ = try await NSWorkspace.shared.open([url],
+                    withApplicationAt: URL(fileURLWithPath: "/System/Applications/TextEdit.app"),
+                    configuration: NSWorkspace.OpenConfiguration())
+            } catch { NSAlert(error: error).runModal() }
+        }
     }
 }

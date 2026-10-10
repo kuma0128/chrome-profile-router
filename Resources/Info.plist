@@ -9,8 +9,8 @@
     <key>CFBundleLocalizations</key><array><string>ja</string></array>
     <key>CFBundleExecutable</key><string>ChromeProfileRouter</string>
     <key>CFBundlePackageType</key><string>APPL</string>
-    <key>CFBundleShortVersionString</key><string>1.0.5</string>
-    <key>CFBundleVersion</key><string>6</string>
+    <key>CFBundleShortVersionString</key><string>1.0.6</string>
+    <key>CFBundleVersion</key><string>7</string>
     <key>SUFeedURL</key><string>https://github.com/kuma0128/chrome-profile-router/releases/latest/download/appcast.xml</string>
     <key>SUPublicEDKey</key><string>t8x/hto4VvrkTXRncul/hCOVgdcDeblHr5QQHSGb3FM=</string>
     <key>SUEnableAutomaticChecks</key><true/>

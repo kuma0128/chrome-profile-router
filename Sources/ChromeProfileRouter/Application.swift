@@ -124,10 +124,15 @@ final class RouterDelegate: NSObject, NSApplicationDelegate {
                 // must not take focus and then return it to the source app on exit.
                 options.activates = runningChrome?.isTerminated != false
                 options.arguments = batch.arguments
-                NSWorkspace.shared.openApplication(at: chromeURL, configuration: options) { application, error in
-                    Task { @MainActor in
+                Task { @MainActor in
+                    do {
+                        // The callback API runs off-main. The async API resumes on our actor.
+                        let application = try await NSWorkspace.shared.openApplication(at: chromeURL,
+                                                                                      configuration: options)
                         let browser = runningChrome.flatMap { $0.isTerminated ? nil : $0 } ?? application
-                        self.completeLaunch(browser: browser, error: error)
+                        self.completeLaunch(browser: browser, error: nil)
+                    } catch {
+                        self.completeLaunch(browser: nil, error: error)
                     }
                 }
             }
