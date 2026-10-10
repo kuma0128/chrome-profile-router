@@ -1,6 +1,6 @@
 # Chrome Profile Router
 
-A small macOS app that opens links from other apps in a configured Chrome profile and brings its window to the front. It exits after handing links to Chrome.
+A small macOS app that opens links from other apps in a configured Chrome profile and brings its window to the front. Open the app directly to manage settings and updates. URL launches exit after handing links to Chrome, unless an update check or update window is active.
 
 ## Install
 
@@ -8,11 +8,15 @@ Requires **macOS 13 or later** and **Google Chrome**. The download supports both
 
 1. Download `Chrome-Profile-Router-<version>-universal.zip` from [Releases](https://github.com/kuma0128/chrome-profile-router/releases/latest).
 2. Extract it and move **Chrome Profile Router.app** to **Applications**.
-3. Open the app once to create your settings. It exits without showing a window.
+3. Open the app to create your settings and display the management window. Choose **設定ファイルを開く…** to configure your profiles.
 
 The app uses ad-hoc signing and is not notarized by Apple. If macOS blocks the first launch, open **System Settings → Privacy & Security → Open Anyway** after attempting to open it, only if you trust the download. See [Apple's instructions](https://support.apple.com/en-us/102445).
 
-To update, replace the app with the latest download. Your settings are preserved.
+Starting with **1.0.5**, the app checks for updates about once a day while in use. A new version shows a reminder without taking focus from Chrome. Choose **更新を確認…** to download and install it, or close the reminder to leave it until later. Sparkle's update window also offers postponing or skipping a version. Settings are preserved.
+
+Open the app directly to check for updates at any time or turn automatic checks off. The app does not run an always-on background service, and installs only after you choose to update. Failed automatic checks do not block links. Updates and their feed are verified with an Ed25519 signature.
+
+**1.0.4 and earlier:** replace the app manually once to enable in-app updates. You can also keep updating manually using the ZIP downloads.
 
 ## Configure
 
@@ -78,4 +82,12 @@ This builds for your Mac and installs the app in `~/Applications`. Use that path
 ./scripts/package.sh # Build a universal app and ZIP in dist/
 ```
 
-To publish a release, update the version and build number in `Resources/Info.plist`, commit, and push a matching `v<version>` tag. GitHub Actions builds the ZIP, tests it on Apple Silicon and Intel, and publishes it to Releases.
+To publish a release, update the version and build number in `Resources/Info.plist`, commit, and push a matching `v<version>` tag. GitHub Actions builds the ZIP, tests it on Apple Silicon and Intel, signs the update and `appcast.xml`, and publishes all files to Releases. The app reads the feed from the latest release.
+
+Release signing requires the repository Actions secret `SPARKLE_PRIVATE_KEY`, matching `SUPublicEDKey` in `Resources/Info.plist`. The maintainer's key is stored in macOS Keychain under service `https://sparkle-project.org`, account `chrome-profile-router`. Keep this key: ad-hoc signed apps cannot rotate it using an Apple Developer ID fallback. Never commit or print the private key. For local packaging, `./scripts/appcast.sh` uses the Keychain after `./scripts/package.sh`.
+
+Sparkle is pinned in `Package.swift` and `Package.resolved`; the build embeds its framework and helper tools. The update signature is separate from Apple Developer ID signing and notarization, which this app does not currently use.
+
+For an end-to-end update test, copy a built app to a separate directory, lower its `CFBundleVersion` and display version, and re-sign that test copy with `codesign --force --sign -`. Point only the test copy's `SUFeedURL` at a local test feed, generated and signed with Sparkle's `generate_appcast`. Test detection, postponing/skipping, installation, relaunch, preserved settings, and links opened during a check. Also verify that a modified feed is rejected. Do not publish test bundles or disable signature verification.
+
+An unchanged 1.0.4 download cannot be installed by a Sparkle-enabled test host: it lacks `SUPublicEDKey`, and Sparkle rejects removing an existing update key. To test against 1.0.4's routing code, add the public-key metadata to a separate 1.0.4 fixture and re-sign it; verify the actual release archive separately. The published 1.0.4 archive stays unchanged.

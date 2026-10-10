@@ -10,7 +10,8 @@ trap 'rm -rf "$check_dir"' EXIT
 ditto -x -k "$1" "$check_dir"
 app_dir="$check_dir/Chrome Profile Router.app"
 router="$app_dir/Contents/MacOS/ChromeProfileRouter"
-codesign --verify --strict --all-architectures "$app_dir"
+codesign --verify --deep --strict --all-architectures "$app_dir"
+test -f "$app_dir/Contents/Frameworks/Sparkle.framework/Sparkle"
 architectures="$(xcrun lipo -archs "$router")"
 for architecture in arm64 x86_64; do
     [[ " $architectures " == *" $architecture "* ]]
@@ -22,10 +23,13 @@ cmp "$project_dir/config.json" "$app_dir/Contents/Resources/config.json"
 test_user_dir="$check_dir/user"
 mkdir -p "$test_user_dir"
 config="$test_user_dir/.config/chrome-profile-router/config.json"
-CFFIXED_USER_HOME="$test_user_dir" "$router" --config "$project_dir/config.json" --check-config
+DYLD_PRINT_LIBRARIES=1 CFFIXED_USER_HOME="$test_user_dir" "$router" \
+    --config "$project_dir/config.json" --check-config 2> "$check_dir/loaded-libraries.log"
+# Verify the distributed app uses its own framework, not the developer's build directory.
+grep -Fq "$app_dir/Contents/Frameworks/Sparkle.framework/" "$check_dir/loaded-libraries.log"
 test ! -e "$config"
-# A normal launch with no URL must create settings and exit without opening Chrome.
-CFFIXED_USER_HOME="$test_user_dir" "$router"
+# CLI validation must create settings without displaying management or update UI.
+CFFIXED_USER_HOME="$test_user_dir" "$router" --check-config
 cmp "$project_dir/config.json" "$config"
 CFFIXED_USER_HOME="$test_user_dir" "$router" --resolve 'https://work.example.com/' > "$check_dir/route.json"
 test "$(plutil -extract 0.profileDirectory raw "$check_dir/route.json")" = 'Profile 1'

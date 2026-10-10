@@ -10,6 +10,10 @@ final class RouterDelegate: NSObject, NSApplicationDelegate {
     private let forwarder = ChromeForwarder()
     private var pendingLaunches = 0
     private var shutdownTimer: Timer?
+    private var receivedURLs = false
+    private var updates: UpdateController?
+    private var management: ManagementWindow?
+    private var terminationRequested = false
     private(set) var failed = false
 
     init(store: ConfigurationStore, initialURLs: [URL]) {
@@ -21,6 +25,14 @@ final class RouterDelegate: NSObject, NSApplicationDelegate {
         if initialURLs.isEmpty {
             // A Finder launch also prepares settings, even without a URL to route.
             do { _ = try store.fileURL } catch { report(error) }
+            let updates = UpdateController()
+            self.updates = updates
+            updates.onStateChange = { [weak self] in self?.scheduleExit() }
+            updates.onReminder = { [weak self] version in
+                guard let self else { return }
+                self.showManagement(activate: !self.receivedURLs, availableVersion: version)
+            }
+            updates.start()
         } else {
             open(initialURLs)
         }
@@ -31,8 +43,50 @@ final class RouterDelegate: NSObject, NSApplicationDelegate {
         open(urls)
     }
 
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        showManagement(activate: true)
+        return false
+    }
+
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        guard pendingLaunches > 0 else { return .terminateNow }
+        // Sparkle also uses normal app termination to install an update.
+        // Finish forwarding URLs before allowing either an update or Quit to proceed.
+        terminationRequested = true
+        shutdownTimer?.invalidate()
+        return .terminateLater
+    }
+
+    private func showManagement(activate: Bool, availableVersion: String? = nil) {
+        guard let updates else { return }
+        shutdownTimer?.invalidate()
+        if management == nil {
+            management = ManagementWindow(store: store, updates: updates)
+            management?.onClose = { [weak self] in
+                guard let self else { return }
+                self.updates?.managementIsVisible = false
+                self.scheduleExit()
+            }
+        }
+        updates.managementIsVisible = true
+        installMenu()
+        management?.present(activate: activate, availableVersion: availableVersion)
+    }
+
+    private func installMenu() {
+        guard NSApp.mainMenu == nil else { return }
+        let menu = NSMenu()
+        let applicationItem = NSMenuItem()
+        let applicationMenu = NSMenu()
+        applicationMenu.addItem(withTitle: "Chrome Profile Routerを終了", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        applicationItem.submenu = applicationMenu
+        menu.addItem(applicationItem)
+        NSApp.mainMenu = menu
+    }
+
     private func open(_ urls: [URL]) {
         guard !urls.isEmpty else { return }
+        receivedURLs = true
         shutdownTimer?.invalidate()
         do {
             let configuration = try store.load()
@@ -95,6 +149,10 @@ final class RouterDelegate: NSObject, NSApplicationDelegate {
             }
         }
         pendingLaunches -= 1
+        if terminationRequested, pendingLaunches == 0 {
+            NSApp.reply(toApplicationShouldTerminate: true)
+            return
+        }
         scheduleExit()
     }
 
@@ -116,16 +174,25 @@ final class RouterDelegate: NSObject, NSApplicationDelegate {
 
     private func scheduleExit() {
         shutdownTimer?.invalidate()
-        guard pendingLaunches == 0 else { return }
+        guard pendingLaunches == 0, !terminationRequested else { return }
         // CLI input is complete; it does not need to wait for URL Apple Events.
         if !initialURLs.isEmpty {
             stop()
             return
         }
+        guard updates?.managementIsVisible != true else { return }
         // Allow Launch Services to deliver the initial URL event and closely spaced clicks.
         shutdownTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: false) { [weak self] _ in
             Task { @MainActor in
                 guard let self, self.pendingLaunches == 0 else { return }
+                if !self.receivedURLs, self.management == nil {
+                    self.showManagement(activate: true)
+                    return
+                }
+                guard self.updates?.managementIsVisible != true else { return }
+                // Closing a reminder means "later"; no installation was requested.
+                // Still wait for any URL handoff before leaving the hidden update session.
+                guard self.updates?.isBusy != true || self.updates?.hasPendingReminder == true else { return }
                 self.stop()
             }
         }

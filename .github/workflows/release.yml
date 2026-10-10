@@ -29,12 +29,20 @@ jobs:
           test "$RELEASE_TAG" = "v$version"
       - name: Build universal ZIP
         run: ./scripts/package.sh
+      - name: Sign update archive and feed
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+        run: |
+          test -n "$SPARKLE_PRIVATE_KEY"
+          ./scripts/appcast.sh
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release
           path: |
             dist/*.zip
             dist/*.sha256
+            dist/appcast.xml
           if-no-files-found: error
 
   test:
@@ -83,12 +91,15 @@ jobs:
           cat > "$RUNNER_TEMP/release-notes.md" <<'NOTES'
           Download the universal ZIP below for Apple Silicon and Intel Macs running macOS 13 or later. Xcode and Swift are not required.
 
-          Extract the ZIP, move **Chrome Profile Router.app** to Applications, and open it once. The app creates `~/.config/chrome-profile-router/config.json` and exits without showing a window. Edit this file before choosing the app as your default browser.
+          Extract the ZIP, move **Chrome Profile Router.app** to Applications, and open it. The management window shows the installed version and buttons to check for updates or open your settings. Configure your Chrome profiles before choosing the app as your default browser.
+
+          Starting with 1.0.5, the app checks for updates about once a day while in use and asks before installing. You can also choose **更新を確認…** in the management window. Versions 1.0.4 and earlier need one manual replacement to enable this feature.
 
           This build uses ad-hoc signing and is not notarized by Apple. If macOS blocks the first launch, use **System Settings → Privacy & Security → Open Anyway** after attempting to open it, only if you trust this download. See [Apple's instructions](https://support.apple.com/en-us/102445).
 
           Existing user settings are preserved when updating.
           NOTES
-          gh release create "$RELEASE_TAG" dist/*.zip dist/*.sha256 \
+          test -s dist/appcast.xml
+          gh release create "$RELEASE_TAG" dist/*.zip dist/*.sha256 dist/appcast.xml \
             --verify-tag --title "$RELEASE_TAG" --generate-notes \
             --notes-file "$RUNNER_TEMP/release-notes.md"

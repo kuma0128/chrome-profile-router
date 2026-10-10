@@ -13,7 +13,8 @@ struct CommandLineOptions {
       --check-config           設定ファイルを検証
       --config PATH            この起動で使う設定ファイルを指定
       --help                   この説明を表示
-    オプションなしの .app はmacOSからURLを受け取り、Chromeへ渡して終了します。
+    .app を直接開くと管理画面を表示します。URLから起動するとChromeへ渡します。
+    更新の確認・案内中を除き、リンクを渡した後に終了します。
     ローカルHTMLファイルは file:///... 形式で指定できます。
     """
 
