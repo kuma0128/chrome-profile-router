@@ -10,7 +10,8 @@ final class UpdateController: NSObject, SPUUpdaterDelegate, @preconcurrency SPUS
     var onStateChange: (() -> Void)?
     var onReminder: ((String) -> Void)?
     var managementIsVisible = false
-    private(set) var hasPendingReminder = false
+    private(set) var availableVersion: String?
+    var hasPendingReminder: Bool { availableVersion != nil }
     private(set) var startupError: Error?
 
     var updater: SPUUpdater { controller.updater }
@@ -35,8 +36,7 @@ final class UpdateController: NSObject, SPUUpdaterDelegate, @preconcurrency SPUS
 
     func checkForUpdates() {
         guard startupError == nil, updater.canCheckForUpdates else { return }
-        hasPendingReminder = false
-        NSApp.dockTile.badgeLabel = nil
+        availableVersion = nil
         updater.checkForUpdates()
     }
 
@@ -44,30 +44,27 @@ final class UpdateController: NSObject, SPUUpdaterDelegate, @preconcurrency SPUS
 
     func standardUserDriverShouldHandleShowingScheduledUpdate(_ update: SUAppcastItem,
                                                                andInImmediateFocus: Bool) -> Bool {
-        // A URL launch must not take focus back from Chrome when an update is found.
-        managementIsVisible && NSApp.isActive
+        // Scheduled checks only change the management window's status text.
+        // The user must choose Check for Updates to open Sparkle's update UI.
+        false
     }
 
     func standardUserDriverWillHandleShowingUpdate(_ handleShowingUpdate: Bool,
                                                    forUpdate update: SUAppcastItem,
                                                    state: SPUUserUpdateState) {
         guard !handleShowingUpdate else { return }
-        hasPendingReminder = true
+        availableVersion = update.displayVersionString
         onReminder?(update.displayVersionString)
-        NSApp.dockTile.badgeLabel = String(localized: "Update")
-        NSApp.requestUserAttention(.informationalRequest)
     }
 
     func standardUserDriverDidReceiveUserAttention(forUpdate update: SUAppcastItem) {
-        hasPendingReminder = false
-        NSApp.dockTile.badgeLabel = nil
+        availableVersion = nil
     }
 
     func updater(_ updater: SPUUpdater, didFinishUpdateCycleFor updateCheck: SPUUpdateCheck,
                  error: Error?) {
         if let error { logger.info("Update check finished: \(error.localizedDescription, privacy: .public)") }
-        hasPendingReminder = false
-        NSApp.dockTile.badgeLabel = nil
+        availableVersion = nil
         onStateChange?()
     }
 }

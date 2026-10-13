@@ -69,17 +69,15 @@ final class ManagementWindow: NSWindowController, NSWindowDelegate {
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
-    func present(activate: Bool, availableVersion: String? = nil) {
-        if let availableVersion {
-            status.stringValue = String(localized: "Version \(availableVersion) is available. Choose “Check for Updates…” to install it.")
-        }
+    func present(availableVersion: String? = nil) {
+        if let availableVersion { showAvailableVersion(availableVersion) }
         NSApp.setActivationPolicy(.regular)
-        if activate {
-            showWindow(nil)
-            NSApp.activate(ignoringOtherApps: true)
-        } else {
-            window?.orderFront(nil)
-        }
+        showWindow(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    func showAvailableVersion(_ version: String) {
+        status.stringValue = String(localized: "Version \(version) is available. Choose “Check for Updates…” to install it.")
     }
 
     func windowWillClose(_ notification: Notification) { onClose?() }

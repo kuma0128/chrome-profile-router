@@ -1,6 +1,6 @@
 # Chrome Profile Router
 
-A small macOS app that opens links from other apps in a configured Chrome profile and brings its window to the front. Open the app directly to manage settings and updates. URL launches exit after handing links to Chrome, unless an update check or update window is active.
+A small macOS app that opens links from other apps in a configured Chrome profile and brings Chrome's window to the front. Link launches do not open the router's management or update windows. Open the app directly to manage settings and updates. URL launches exit after handing links to Chrome and finishing any automatic update check.
 
 ## Install
 
@@ -12,7 +12,7 @@ Requires **macOS 13 or later** and **Google Chrome**. The download supports both
 
 The app uses ad-hoc signing and is not notarized by Apple. If macOS blocks the first launch, open **System Settings → Privacy & Security → Open Anyway** after attempting to open it, only if you trust the download. See [Apple's instructions](https://support.apple.com/en-us/102445).
 
-Starting with **1.0.5**, the app checks for updates about once a day while in use. A new version shows a reminder without taking focus from Chrome. Choose **Check for Updates…** (**更新を確認…**) to download and install it, or close the reminder to leave it until later. Sparkle's update window also offers postponing or skipping a version. Settings are preserved.
+Starting with **1.0.5**, the app checks for updates about once a day while in use. In **1.0.8 and later**, automatic checks run quietly: they do not open windows, show a Dock icon, or request attention. If the management window is already open, an available update is shown in its status text. Open the app and choose **Check for Updates…** (**更新を確認…**) to download and install an update. Sparkle's update window also offers postponing or skipping a version. Settings are preserved.
 
 Open the app directly to check for updates at any time or turn automatic checks off. The app does not run an always-on background service, and installs only after you choose to update. Failed automatic checks do not block links. Updates and their feed are verified with an Ed25519 signature.
 
@@ -93,6 +93,8 @@ This builds for your Mac and installs the app in `~/Applications`. Use that path
 To publish a release, update the version and build number in `Resources/Info.plist`, commit, and push a matching `v<version>` tag. GitHub Actions builds the ZIP, tests it on Apple Silicon and Intel, signs the update and `appcast.xml`, and publishes all files to Releases. The app reads the feed from the latest release.
 
 Before tagging, download the ZIP from the successful main-branch workflow and test that exact build on a Mac. Open the management window, choose **設定ファイルを開く…**, and confirm both that TextEdit opens the settings and that the router stays running and responds to **更新を確認…** afterward. Also check a missing `--config` path: dismissing the error must leave the router usable. A local build alone is insufficient because the local and CI Swift toolchains can differ. After publishing, install through the updater and repeat the settings check on the released app.
+
+Check both cold and repeated URL/HTML-file launches, including when an automatic check finds an update: only Chrome should come forward, with no router window or Dock icon. The router should exit after forwarding and completing the check. Directly opening or reopening the app must still show management. With management open but another app in front, an automatic update may change its status text but must not raise any window or request attention; **Check for Updates…** must still open the update dialog when chosen.
 
 Localizations live in `Resources/<language>.lproj/Localizable.strings`. The existing build script copies them into the main app bundle; `String(localized:)` lets Foundation select the language. Keep keys and format placeholders in sync with `en.lproj`. The unpackaged Swift executable has English source fallbacks; use the built `.app` to test translations. Package checks exercise all 13 localizations, regional variants, language priority, and unsupported-language fallback. For UI checks, launch the app binary with `-AppleLanguages '(en)'` or `-AppleLanguages '(ja)'` (Apple's standard per-launch overrides), check the management window and Sparkle dialogs for clipping and mixed languages, include Arabic's right-to-left layout, and verify the macOS per-app language setting. These launch arguments do not change persistent language preferences.
 

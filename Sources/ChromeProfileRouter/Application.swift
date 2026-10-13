@@ -10,7 +10,7 @@ final class RouterDelegate: NSObject, NSApplicationDelegate {
     private let forwarder = ChromeForwarder()
     private var pendingLaunches = 0
     private var shutdownTimer: Timer?
-    private var receivedURLs = false
+    private var managementRequested = false
     private var updates: UpdateController?
     private var management: ManagementWindow?
     private var terminationRequested = false
@@ -30,9 +30,12 @@ final class RouterDelegate: NSObject, NSApplicationDelegate {
             updates.onStateChange = { [weak self] in self?.scheduleExit() }
             updates.onReminder = { [weak self] version in
                 guard let self else { return }
-                self.showManagement(activate: !self.receivedURLs, availableVersion: version)
+                // Automatic checks only update an already-created management window.
+                self.management?.showAvailableVersion(version)
+                self.scheduleExit()
             }
             updates.start()
+            if managementRequested { showManagement() }
         } else {
             open(initialURLs)
         }
@@ -43,8 +46,15 @@ final class RouterDelegate: NSObject, NSApplicationDelegate {
         open(urls)
     }
 
+    func applicationShouldOpenUntitledFile(_ sender: NSApplication) -> Bool {
+        // AppKit sends this for a direct launch, but not for a URL or HTML file.
+        // It can arrive before applicationDidFinishLaunching initializes updates.
+        managementRequested = initialURLs.isEmpty
+        return false
+    }
+
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        showManagement(activate: true)
+        showManagement()
         return false
     }
 
@@ -57,7 +67,7 @@ final class RouterDelegate: NSObject, NSApplicationDelegate {
         return .terminateLater
     }
 
-    private func showManagement(activate: Bool, availableVersion: String? = nil) {
+    private func showManagement() {
         guard let updates else { return }
         shutdownTimer?.invalidate()
         if management == nil {
@@ -65,12 +75,13 @@ final class RouterDelegate: NSObject, NSApplicationDelegate {
             management?.onClose = { [weak self] in
                 guard let self else { return }
                 self.updates?.managementIsVisible = false
+                NSApp.setActivationPolicy(.accessory)
                 self.scheduleExit()
             }
         }
         updates.managementIsVisible = true
         installMenu()
-        management?.present(activate: activate, availableVersion: availableVersion)
+        management?.present(availableVersion: updates.availableVersion)
     }
 
     private func installMenu() {
@@ -86,7 +97,6 @@ final class RouterDelegate: NSObject, NSApplicationDelegate {
 
     private func open(_ urls: [URL]) {
         guard !urls.isEmpty else { return }
-        receivedURLs = true
         shutdownTimer?.invalidate()
         do {
             let configuration = try store.load()
@@ -190,13 +200,9 @@ final class RouterDelegate: NSObject, NSApplicationDelegate {
         shutdownTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: false) { [weak self] _ in
             Task { @MainActor in
                 guard let self, self.pendingLaunches == 0 else { return }
-                if !self.receivedURLs, self.management == nil {
-                    self.showManagement(activate: true)
-                    return
-                }
                 guard self.updates?.managementIsVisible != true else { return }
-                // Closing a reminder means "later"; no installation was requested.
-                // Still wait for any URL handoff before leaving the hidden update session.
+                // A background reminder needs no window or installation. Finish the
+                // URL handoff, then leave it for the next explicit management launch.
                 guard self.updates?.isBusy != true || self.updates?.hasPendingReminder == true else { return }
                 self.stop()
             }
