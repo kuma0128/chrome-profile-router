@@ -49,6 +49,7 @@ Edit `~/.config/chrome-profile-router/config.json`, created on first launch. For
 
 - Find each profile's directory name in **chrome://version → Profile Path**. Use an existing directory; an unknown name may cause Chrome to create a new profile.
 - The first matching host rule wins. Other URLs use `defaultProfile`.
+- Host rules accept Unicode domains (such as `例え.テスト`) and their ASCII/Punycode form (`xn--r8jz45g.xn--zckzah`). Matching ignores case and a final dot, and treats percent-encoded Unicode in incoming URL hosts the same as Punycode. Enter only a domain name in a rule, without a scheme, path, port, or percent escapes.
 - Set `includeSubdomains` to `true` to include subdomains, or `false` for an exact host match.
 - Changes take effect on the next link. Keep personal rules in the user config; the repository's `config.json` is a sample.
 
@@ -71,6 +72,8 @@ router='/Applications/Chrome Profile Router.app/Contents/MacOS/ChromeProfileRout
 ```
 
 Use `--open URL [URL ...]` to open links, or `--config PATH` to use another config file. HTTP, HTTPS, and local HTML files (`file:///path/page.html`) are supported.
+
+Local HTML URLs may also use `file://localhost/path/page.html`; `localhost` is case-insensitive. File URLs with other hosts are rejected.
 
 ## Build from source
 

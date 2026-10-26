@@ -33,6 +33,25 @@ CFFIXED_USER_HOME="$test_user_dir" "$router" --check-config
 cmp "$project_dir/config.json" "$config"
 CFFIXED_USER_HOME="$test_user_dir" "$router" --resolve 'https://work.example.com/' > "$check_dir/route.json"
 test "$(plutil -extract 0.profileDirectory raw "$check_dir/route.json")" = 'Profile 1'
+# Exercise host normalization through the packaged CLI, including Unicode rules
+# and percent-encoded URLs, without changing the user's settings or opening Chrome.
+cat > "$check_dir/international-config.json" <<'JSON'
+{"defaultProfile":"personal","profiles":{"personal":"Default","work":"Profile 1"},
+ "rules":[{"host":"例え.テスト","profile":"work","includeSubdomains":true}]}
+JSON
+encoded_url='https://%E4%BE%8B%E3%81%88.%E3%83%86%E3%82%B9%E3%83%88/path?q=a%20b#section'
+CFFIXED_USER_HOME="$test_user_dir" "$router" --config "$check_dir/international-config.json" \
+    --resolve 'https://例え.テスト/' 'https://xn--r8jz45g.xn--zckzah/' "$encoded_url" \
+    'https://team.例え.テスト./' 'https://例え.テスト.example.com/' \
+    'file://LOCALHOST/tmp/check.HTML' > "$check_dir/international-route.json"
+for index in 0 1 2 3; do
+    test "$(plutil -extract "$index.profileDirectory" raw "$check_dir/international-route.json")" = 'Profile 1'
+done
+for index in 4 5; do
+    test "$(plutil -extract "$index.profileDirectory" raw "$check_dir/international-route.json")" = 'Default'
+done
+test "$(plutil -extract 2.host raw "$check_dir/international-route.json")" = 'xn--r8jz45g.xn--zckzah'
+test "$(plutil -extract 2.arguments.1 raw "$check_dir/international-route.json")" = "$encoded_url"
 # Invalid user settings must be reported, never silently replaced by the sample.
 printf 'invalid JSON\n' > "$config"
 if CFFIXED_USER_HOME="$test_user_dir" "$router" --check-config > "$check_dir/invalid-settings.log" 2>&1; then

@@ -66,7 +66,7 @@ public struct RoutingConfiguration: Decodable, Sendable {
     public func plan(for url: URL) throws -> LaunchPlan {
         let scheme = url.scheme?.lowercased()
         let isWebURL = ["http", "https"].contains(scheme ?? "") && !(url.host ?? "").isEmpty
-        let isLocalHTML = url.isFileURL && [nil, "", "localhost"].contains(url.host) &&
+        let isLocalHTML = url.isFileURL && [nil, "", "localhost"].contains(url.host?.lowercased()) &&
             ["html", "htm", "xhtml"].contains(url.pathExtension.lowercased())
         guard isWebURL || isLocalHTML else {
             throw RoutingError.unsupportedURL
@@ -85,7 +85,16 @@ public struct RoutingConfiguration: Decodable, Sendable {
     }
 
     private static func normalizedHost(_ host: String) -> String {
-        let value = host.lowercased()
+        let value: String
+        if host.utf8.allSatisfy({ $0 < 128 }) {
+            value = host.lowercased()
+        } else {
+            // URL.host may decode percent-encoded Unicode while leaving Punycode as ASCII.
+            // Use Foundation's IDNA conversion for both rule hosts and incoming URL hosts.
+            var components = URLComponents()
+            components.host = host
+            value = (components.encodedHost ?? host).lowercased()
+        }
         return value.hasSuffix(".") ? String(value.dropLast()) : value
     }
 }

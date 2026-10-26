@@ -9,6 +9,15 @@ struct RoutingTests {
         return try RoutingConfiguration.decode(Data(contentsOf: project.appendingPathComponent("config.json")))
     }
 
+    private func configuration(host: String, includeSubdomains: Bool = true) throws -> RoutingConfiguration {
+        let data = try JSONSerialization.data(withJSONObject: [
+            "defaultProfile": "personal",
+            "profiles": ["personal": "Default", "work": "Profile 1"],
+            "rules": [["host": host, "profile": "work", "includeSubdomains": includeSubdomains]],
+        ])
+        return try RoutingConfiguration.decode(data)
+    }
+
     @Test func currentRulesAndDefault() throws {
         let config = try configuration()
         let cases = [
@@ -50,6 +59,85 @@ struct RoutingTests {
         #expect(plan.arguments == ["--profile-directory=Profile 2", url.absoluteString])
     }
 
+    @Test func encodedInternationalHostsMatchPunycodeRules() throws {
+        let config = try configuration(host: "xn--bcher-kva.example")
+        let inputs = [
+            "https://bücher.example/path?q=a%20b#section",
+            "https://xn--bcher-kva.example/path?q=a%20b#section",
+            "https://%62%C3%BCcher.example/path?q=a%20b#section",
+            "https://team.b%C3%BCcher.example./path",
+        ]
+        for input in inputs {
+            let url = try #require(URL(string: input))
+            let plan = try config.plan(for: url)
+            #expect(plan.profileDirectory == "Profile 1", "\(input)")
+            #expect(plan.host == (input.contains("team.") ? "team.xn--bcher-kva.example" : "xn--bcher-kva.example"))
+            #expect(plan.arguments == ["--profile-directory=Profile 1", url.absoluteString])
+        }
+    }
+
+    @Test(arguments: [
+        ("bücher.example", "xn--bcher-kva.example"),
+        ("BÜCHER.example.", "xn--bcher-kva.example"),
+        ("例え.テスト", "xn--r8jz45g.xn--zckzah"),
+        ("e\u{301}.example", "xn--9ca.example"),
+        ("ＷＯＲＫ。ＥＸＡＭＰＬＥ．ＣＯＭ．", "work.example.com"),
+    ])
+    func internationalizedRulesMatchEquivalentHostnames(ruleHost: String, asciiHost: String) throws {
+        let config = try configuration(host: ruleHost)
+        let encodedHost = ruleHost.utf8.map { String(format: "%%%02X", $0) }.joined()
+        for host in [ruleHost, asciiHost, encodedHost] {
+            for prefix in ["", "team."] {
+                let url = try #require(URL(string: "https://\(prefix)\(host)/path?q=value#section"))
+                let plan = try config.plan(for: url)
+                #expect(plan.profileDirectory == "Profile 1", "\(url)")
+                #expect(plan.host == prefix + asciiHost)
+                #expect(plan.arguments == ["--profile-directory=Profile 1", url.absoluteString])
+            }
+        }
+    }
+
+    @Test func internationalizedRulesKeepExactMatchesAndHostBoundaries() throws {
+        let exact = try configuration(host: "bücher.example", includeSubdomains: false)
+        let subdomains = try configuration(host: "bücher.example")
+        for input in ["https://team.bücher.example/", "https://team.xn--bcher-kva.example/",
+                      "https://team.b%C3%BCcher.example/"] {
+            let url = try #require(URL(string: input))
+            #expect(try exact.plan(for: url).profileDirectory == "Default")
+            #expect(try subdomains.plan(for: url).profileDirectory == "Profile 1")
+        }
+        for input in ["https://evilbücher.example/", "https://bücher.example.evil.example/",
+                      "https://bücher.example@evil.example/", "https://evil.example/?next=https://bücher.example/",
+                      "https://b%25C3%25BCcher.example/"] {
+            let url = try #require(URL(string: input))
+            #expect(try subdomains.plan(for: url).profileDirectory == "Default", "\(input)")
+        }
+    }
+
+    @Test(arguments: [
+        "", ".", "bücher..example", "bücher.example..", "-bücher.example", "bücher-.example",
+        "https://bücher.example", "bücher.example/path", "bücher.example:443", "user@bücher.example",
+        "bücher.example?query", "bücher.example#fragment", "bücher.example\\path",
+        " bücher.example", "bücher.example ", "bücher.example\n", "*.bücher.example",
+        "b%C3%BCcher.example", "bücher%2Eexample", "a_b.example", "\u{200D}.example",
+        String(repeating: "é", count: 58) + ".example",
+        String(repeating: "a", count: 64) + ".example",
+        Array(repeating: String(repeating: "a", count: 63), count: 4).joined(separator: "."),
+    ])
+    func invalidRuleHostsAreRejected(host: String) {
+        #expect(throws: (any Error).self) { try configuration(host: host) }
+    }
+
+    @Test func equivalentInternationalizedRulesUseFirstMatch() throws {
+        let config = try RoutingConfiguration.decode(Data(#"""
+        {"defaultProfile":"personal","profiles":{"personal":"Default","work":"Profile 1"},
+         "rules":[{"host":"BÜCHER.example.","profile":"work","includeSubdomains":true},
+                  {"host":"xn--bcher-kva.example","profile":"personal","includeSubdomains":true}]}
+        """#.utf8))
+        let plan = try config.plan(for: #require(URL(string: "https://team.b%C3%BCcher.example/")))
+        #expect(plan.profileDirectory == "Profile 1")
+    }
+
     @Test func unsupportedURLsAreRejected() throws {
         let config = try configuration()
         for input in ["file:///tmp/test.txt", "file://remote.example/test.html", "javascript:alert(1)",
@@ -66,6 +154,20 @@ struct RoutingTests {
         #expect(plan.profileDirectory == "Default")
         #expect(plan.arguments == ["--profile-directory=Default", url.absoluteString])
         #expect(plan.host.isEmpty)
+    }
+
+    @Test func localHTMLHostIsCaseInsensitive() throws {
+        let config = try configuration()
+        for host in ["localhost", "LOCALHOST", "LocalHost"] {
+            let url = try #require(URL(string: "file://\(host)/tmp/router%20check.HTML"))
+            let plan = try config.plan(for: url)
+            #expect(plan.arguments == ["--profile-directory=Default", url.absoluteString])
+            #expect(plan.host.isEmpty)
+        }
+        for host in ["localhost.example", "example.localhost", "remote.example"] {
+            let url = try #require(URL(string: "file://\(host)/tmp/check.html"))
+            #expect(throws: (any Error).self) { try config.plan(for: url) }
+        }
     }
 
     @Test func invalidConfigurationDoesNotFallback() throws {
